@@ -11,52 +11,97 @@ const map = L.map('map', {
 const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
-const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-  attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-});
+
+const esri = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  { attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community' }
+);
 
 L.control.scale().addTo(map);
 
 // ===============================
-// GEOSERVER
+// DADOS LOCAIS (GEOJSON) - GitHub Pages
+// (não muda "tabelas"/nomes do seu padrão, só o caminho)
 // ===============================
-const GS_BASE = 'http://localhost:8080/geoserver';
-const WORKSPACE = 'webgis';
-const WMS_URL = `${GS_BASE}/${WORKSPACE}/wms`;
+const DATA = {
+  municipios: 'data/municipios.geojson',
+  estratos:   'data/estratos.geojson',
+  favelas:    'data/favelas.geojson',
+  mcmv:       'data/mcmv.geojson'
+};
 
-function makeWMS(layerName, options = {}) {
-  return L.tileLayer.wms(WMS_URL, {
-    layers: layerName,
-    format: 'image/png',
-    transparent: true,
-    version: '1.1.1',
-    tiled: true,
-    ...options
+// ===============================
+// CAMPOS (os seus)
+// ===============================
+const SAMPLE_FIELDS = {
+  municipios: ['cd_mun', 'nm_mun', 'sigla_uf', 'hierarquia'],
+  estratos:   ['codigo_es', 'nome_es', 'sigla_uf'],
+  favelas:    ['cd_fcu', 'nm_fcu', 'sigla_uf', 'regiao'],
+  mcmv:       ['txt_nome_m', 'txt_modali', 'sigla_uf', 'regiao']
+};
+
+const SAMPLE_LABELS = {
+  municipios: { cd_mun:'Código', nm_mun:'Município', sigla_uf:'UF', hierarquia:'REGIC' },
+  estratos:   { codigo_es:'Código do Estrato', nome_es:'Estrato', sigla_uf:'UF'},
+  favelas:    { cd_fcu:'Código', nm_fcu:'Favela/Comunidade', sigla_uf:'UF', regiao:'Região' },
+  mcmv:       { txt_nome_m:'Município', txt_modali:'Modalidade', sigla_uf:'UF', regiao:'Região' }
+};
+
+// ===============================
+// FILTROS (mesma regra que você tinha)
+// ===============================
+const REGIOES_UF = {
+  'Norte': ['AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO'],
+  'Nordeste': ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'],
+  'Centro-Oeste': ['DF', 'GO', 'MS', 'MT'],
+  'Sudeste': ['ES', 'MG', 'RJ', 'SP'],
+  'Sul': ['PR', 'RS', 'SC']
+};
+
+const regSelect = document.getElementById('regSelect');
+const ufSelect = document.getElementById('ufSelect');
+const regicSelect = document.getElementById('regicSelect');
+const btnClear = document.getElementById('btnClear');
+
+function norm(s) {
+  return (s ?? '')
+    .toString()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // tira acento
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function updateUfOptionsByRegion() {
+  const reg = regSelect.value;
+  const allowed = reg ? new Set(REGIOES_UF[reg] || []) : null;
+  const currentUf = ufSelect.value;
+
+  Array.from(ufSelect.options).forEach(opt => {
+    if (!opt.value) { opt.disabled = false; opt.hidden = false; return; }
+    const ok = allowed ? allowed.has(opt.value) : true;
+    opt.disabled = !ok;
+    opt.hidden = !ok;
   });
+
+  if (allowed && currentUf && !allowed.has(currentUf)) ufSelect.value = '';
 }
 
 // ===============================
-// CAMADAS (AJUSTE AQUI SE PRECISAR)
+// CAMADAS (GeoJSON em memória)
+// Mantém os nomes: municipios/estratos/favelas/mcmv
 // ===============================
-const L_MUNICIPIOS = 'webgis:municipios_com_regiao';
-const L_ESTRATOS   = 'webgis:REPROJ_Corrig_Base_inicial_14012026___Estratos_Geograficos';
-const L_FAVELAS    = 'webgis:REPROJ_Corrig_Base_inicial_14012026___Favelas_comunidades_urb20';
-const L_MCMV       = 'webgis:REPROJ_Corrig_Base_inicial_14012026___MCMV_OGU  copiar'; // <-- confirme o nome exato no GeoServer
+let gjMunicipios = null, gjEstratos = null, gjFavelas = null, gjMcmv = null;
+
+const municipios = L.geoJSON(null, { opacity: 0.90 }).addTo(map);
+const estratos   = L.geoJSON(null, { opacity: 0.85 });
+const favelas    = L.geoJSON(null, { opacity: 0.90 });
+const mcmv       = L.geoJSON(null, { opacity: 1.00 });
 
 // ===============================
-// INSTÂNCIAS WMS
-// ===============================
-const municipios = makeWMS(L_MUNICIPIOS, { opacity: 0.90 }).addTo(map);
-const estratos   = makeWMS(L_ESTRATOS,   { opacity: 0.85 });
-const favelas    = makeWMS(L_FAVELAS,    { opacity: 0.90 });
-const mcmv       = makeWMS(L_MCMV,       { opacity: 1.00 });
-
-// ===============================
-// CONTROLE DE CAMADAS
+// CONTROLE DE CAMADAS (igual ao seu)
 // ===============================
 L.control.layers(
-  { 'OpenStreetMap': osm,
-  'Satélite (ESRI)': esri},
+  { 'OpenStreetMap': osm, 'Satélite (ESRI)': esri },
   {
     'Municípios': municipios,
     'Estratos geográficos': estratos,
@@ -80,145 +125,82 @@ function enforceZoomRules() {
   if (z < Z_FAVELAS_MIN && map.hasLayer(favelas)) map.removeLayer(favelas);
 }
 map.on('zoomend', enforceZoomRules);
-enforceZoomRules();
 
 // ===============================
-// LEGENDA DINÂMICA
+// LEGENDA (sem WMS agora)
+// (mostra só as camadas ativas, simples e leve)
 // ===============================
-function wmsLegendUrl(layerName) {
-  return `${GS_BASE}/${WORKSPACE}/wms?request=GetLegendGraphic&format=image/png&layer=${encodeURIComponent(layerName)}`;
-}
-
 const legendItemsEl = document.getElementById('legend-items');
 const legendConfig = [
-  { label: 'Municípios', layer: L_MUNICIPIOS, ref: municipios },
-  { label: 'Estratos geográficos', layer: L_ESTRATOS, ref: estratos },
-  { label: 'Favelas / comunidades', layer: L_FAVELAS, ref: favelas },
-  { label: 'MCMV/OGU', layer: L_MCMV, ref: mcmv }
+  { label: 'Municípios', ref: municipios },
+  { label: 'Estratos geográficos', ref: estratos },
+  { label: 'Favelas / comunidades', ref: favelas },
+  { label: 'MCMV/OGU', ref: mcmv }
 ];
 
 function refreshLegend() {
+  if (!legendItemsEl) return;
   legendItemsEl.innerHTML = '';
   for (const it of legendConfig) {
     if (!map.hasLayer(it.ref)) continue;
     const div = document.createElement('div');
     div.className = 'legend-item';
-    div.innerHTML = `<div class="lbl">${it.label}</div><img src="${wmsLegendUrl(it.layer)}">`;
+    div.innerHTML = `<div class="lbl">${it.label}</div>`;
     legendItemsEl.appendChild(div);
   }
 }
 map.on('overlayadd overlayremove', refreshLegend);
-refreshLegend();
 
 // ===============================
-// FILTROS: REGIÃO + UF + REGIC (hierarquia)
-// Regras:
-// - Se UF selecionada: filtra por UF (prioridade)
-// - Se UF vazia e Região selecionada: filtra por lista de UFs
-// - REGIC aplica junto (somente onde existe o campo 'hierarquia')
+// FILTRO LOCAL (sem CQL)
 // ===============================
-const REGIOES_UF = {
-  'Norte': ['AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO'],
-  'Nordeste': ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'],
-  'Centro-Oeste': ['DF', 'GO', 'MS', 'MT'],
-  'Sudeste': ['ES', 'MG', 'RJ', 'SP'],
-  'Sul': ['PR', 'RS', 'SC']
-};
-
-const regSelect = document.getElementById('regSelect');
-const ufSelect = document.getElementById('ufSelect');
-const regicSelect = document.getElementById('regicSelect');
-const btnClear = document.getElementById('btnClear');
-
-function clearCql(layer) {
-  if (layer.wmsParams && 'CQL_FILTER' in layer.wmsParams) delete layer.wmsParams.CQL_FILTER;
-  layer.setParams({ _ts: Date.now() });
-  if (layer.redraw) layer.redraw();
-}
-
-function setCql(layer, cql) {
-  layer.setParams({ CQL_FILTER: cql, _ts: Date.now() });
-  if (layer.redraw) layer.redraw();
-}
-
-function updateUfOptionsByRegion() {
-  const reg = regSelect.value;
-  const allowed = reg ? new Set(REGIOES_UF[reg] || []) : null;
-  const currentUf = ufSelect.value;
-
-  Array.from(ufSelect.options).forEach(opt => {
-    if (!opt.value) { opt.disabled = false; opt.hidden = false; return; }
-    const ok = allowed ? allowed.has(opt.value) : true;
-    opt.disabled = !ok;
-    opt.hidden = !ok;
-  });
-
-  if (allowed && currentUf && !allowed.has(currentUf)) ufSelect.value = '';
-}
-
-function escSql(s) {
-  return String(s).replace(/'/g, "''");
-}
-
-async function applyFilters() {
-  const reg = regSelect.value;
-  const uf = ufSelect.value;
+function passesFilters(props, key) {
+  const reg  = regSelect.value;
+  const uf   = ufSelect.value;
   const regic = regicSelect?.value || '';
 
-  // se tudo vazio -> limpa
-  if (!reg && !uf && !regic) {
-    [municipios, estratos, favelas, mcmv].forEach(clearCql);
-    refreshLegend();
-    updateInfoPanel(); // painel
-    return;
-  }
+  const p = props || {};
+  const fUF    = norm(p.sigla_uf).toUpperCase();
+  const fReg   = norm(p.regiao);
+  const fRegic = norm(p.hierarquia);
 
-  // monta condições
-  let partsMun = [];
-  let partsEst = [];
-  let partsFav = [];
-  let partsMcm = [];
-
-  // REGIC (hierarquia) — aplica onde o campo existe
+  // REGIC: aplica com segurança só onde existe o campo
   if (regic) {
-    const cqlRegic = `hierarquia='${escSql(regic)}'`;
-    partsMun.push(cqlRegic);
-    // Se estratos/favelas/mcmv também têm hierarquia, pode habilitar:
-    partsEst.push(cqlRegic);
-    partsFav.push(cqlRegic);
-    partsMcm.push(cqlRegic);
+    // municípios sempre tem; nas outras camadas pode não ter
+    if (p.hierarquia != null && fRegic !== norm(regic)) return false;
   }
 
   // UF tem prioridade
   if (uf) {
-    const cqlUF = `strToUpperCase(sigla_uf)='${uf}'`;
-    partsMun.push(cqlUF);
-    partsEst.push(cqlUF);
-    partsFav.push(cqlUF);
-    partsMcm.push(cqlUF);
+    if (fUF !== uf.toUpperCase()) return false;
   } else if (reg) {
-    const ufs = REGIOES_UF[reg] || [];
-    const inList = ufs.map(x => `'${x}'`).join(',');
-    const cqlList = `strToUpperCase(sigla_uf) IN (${inList})`;
-    partsMun.push(cqlList);
-    partsEst.push(cqlList);
-    partsFav.push(cqlList);
-    partsMcm.push(cqlList);
+    const allowed = new Set(REGIOES_UF[reg] || []);
+    if (!allowed.has(fUF)) return false;
   }
 
-  // aplica
-  const cqlMun = partsMun.length ? partsMun.join(' AND ') : null;
-  const cqlEst = partsEst.length ? partsEst.join(' AND ') : null;
-  const cqlFav = partsFav.length ? partsFav.join(' AND ') : null;
-  const cqlMcm = partsMcm.length ? partsMcm.join(' AND ') : null;
+  return true;
+}
 
-  cqlMun ? setCql(municipios, cqlMun) : clearCql(municipios);
-  cqlEst ? setCql(estratos, cqlEst)   : clearCql(estratos);
-  cqlFav ? setCql(favelas, cqlFav)    : clearCql(favelas);
-  cqlMcm ? setCql(mcmv, cqlMcm)       : clearCql(mcmv);
+function applyToLayer(layer, geojson, key) {
+  if (!geojson) return;
+  layer.clearLayers();
+
+  const filtered = {
+    type: 'FeatureCollection',
+    features: (geojson.features || []).filter(f => passesFilters(f.properties, key))
+  };
+
+  layer.addData(filtered);
+}
+
+async function applyFilters() {
+  applyToLayer(municipios, gjMunicipios, 'municipios');
+  applyToLayer(estratos,   gjEstratos,   'estratos');
+  applyToLayer(favelas,    gjFavelas,    'favelas');
+  applyToLayer(mcmv,       gjMcmv,       'mcmv');
 
   refreshLegend();
-  updateInfoPanel(); // painel
+  updateInfoPanel();
 }
 
 regSelect.addEventListener('change', () => {
@@ -246,45 +228,14 @@ const btnInfoClose = document.getElementById('btnInfoClose');
 const infoPanel = document.getElementById('infoPanel');
 const infoBody = document.getElementById('infoBody');
 
-btnInfo.addEventListener('click', () => {
+btnInfo?.addEventListener('click', () => {
   infoPanel.classList.toggle('hidden');
-  if (!infoPanel.classList.contains('hidden')) {
-    updateInfoPanel(); // força preencher quando abre
-  }
+  if (!infoPanel.classList.contains('hidden')) updateInfoPanel();
 });
 
-btnInfoClose.addEventListener('click', () => {
+btnInfoClose?.addEventListener('click', () => {
   infoPanel.classList.add('hidden');
 });
-
-// Campos reais (ajuste os 2 do estrato se estiverem com outro nome!)
-const SAMPLE_FIELDS = {
-  municipios: ['cd_mun', 'nm_mun', 'sigla_uf', 'hierarquia'],
-  // ⚠️ AJUSTE AQUI: descubra os nomes reais no GeoServer (Layer Preview → JSON)
-  estratos:   ['codigo_es', 'nome_es'],
-  favelas:    ['cd_fcu', 'nm_fcu', 'sigla_uf', 'regiao'],
-  mcmv:       ['txt_nome_m', 'txt_modali', 'sigla_uf', 'regiao']
-};
-
-// Labels bonitos no painel (não dependem do nome real do campo)
-const SAMPLE_LABELS = {
-  municipios: { cd_mun:'Código', nm_mun:'Município', sigla_uf:'UF', hierarquia:'REGIC' },
-  estratos:   { codigo_es:'Código do Estrato',nome_es:'Estrato'},
-  favelas:    { cd_fcu:'Código', nm_fcu:'Favela/Comunidade', sigla_uf:'UF', regiao:'Região' },
-  mcmv:       { txt_nome_m:'Município', txt_modali:'Modalidade', sigla_uf:'UF', regiao:'Região' }
-};
-
-const INFO_LAYERS = [
-  { key:'municipios', label:'Municípios', layerName: L_MUNICIPIOS, ref: municipios },
-  { key:'estratos',   label:'Estratos',   layerName: L_ESTRATOS,   ref: estratos },
-  { key:'favelas',    label:'Favelas',    layerName: L_FAVELAS,    ref: favelas },
-  { key:'mcmv',       label:'MCMV',       layerName: L_MCMV,       ref: mcmv }
-];
-
-function bbox4326() {
-  const b = map.getBounds();
-  return `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()},EPSG:4326`;
-}
 
 function esc(v) {
   return String(v ?? '').replace(/[&<>"']/g, s => ({
@@ -292,29 +243,38 @@ function esc(v) {
   }[s]));
 }
 
-async function fetchSample(meta) {
+const INFO_LAYERS = [
+  { key:'municipios', label:'Municípios', ref: municipios, gj: () => gjMunicipios },
+  { key:'estratos',   label:'Estratos',   ref: estratos,   gj: () => gjEstratos },
+  { key:'favelas',    label:'Favelas',    ref: favelas,    gj: () => gjFavelas },
+  { key:'mcmv',       label:'MCMV',       ref: mcmv,       gj: () => gjMcmv }
+];
+
+function featureBounds(feature) {
+  const tmp = L.geoJSON(feature);
+  return tmp.getBounds();
+}
+
+function sampleVisible(meta, max = 5) {
   if (!map.hasLayer(meta.ref)) return [];
+  const gj = meta.gj();
+  if (!gj?.features?.length) return [];
 
-  const fields = SAMPLE_FIELDS[meta.key] || [];
-  const prop = fields.join(',');
+  const fields = (SAMPLE_FIELDS[meta.key] || []).slice(0, 4);
+  const b = map.getBounds();
 
-  let url =
-    `${GS_BASE}/${WORKSPACE}/ows?service=WFS&version=1.0.0&request=GetFeature` +
-    `&typeName=${encodeURIComponent(meta.layerName)}` +
-    `&outputFormat=application/json` +
-    `&maxFeatures=5` +
-    `&bbox=${encodeURIComponent(bbox4326())}` +
-    `&propertyName=${encodeURIComponent(prop)}`;
+  const out = [];
+  for (const f of gj.features) {
+    if (!passesFilters(f.properties, meta.key)) continue; // respeita filtros
+    const fb = featureBounds(f);
+    if (!b.intersects(fb)) continue;
 
-  const cql = meta.ref?.wmsParams?.CQL_FILTER;
-  if (cql) url += `&CQL_FILTER=${encodeURIComponent(cql)}`;
-
-  try {
-    const gj = await fetch(url).then(r => r.json());
-    return (gj.features || []).map(f => f.properties || {});
-  } catch {
-    return [];
+    const row = {};
+    for (const k of fields) row[k] = f.properties?.[k] ?? '';
+    out.push(row);
+    if (out.length >= max) break;
   }
+  return out;
 }
 
 function downloadText(filename, text) {
@@ -327,38 +287,23 @@ function downloadText(filename, text) {
   document.body.removeChild(link);
 }
 
-async function exportCsvVisible() {
+function exportCsvVisible() {
   const active = INFO_LAYERS.filter(m => map.hasLayer(m.ref));
   if (!active.length) return;
 
-  let lines = ['layer,' + ['c1','c2','c3','c4'].join(',')];
+  const lines = ['layer,c1,c2,c3,c4'];
 
   for (const m of active) {
-    const cols = (SAMPLE_FIELDS[m.key] || []).slice(0, 4);
-    const prop = cols.join(',');
+    const fields = (SAMPLE_FIELDS[m.key] || []).slice(0, 4);
+    const rows = sampleVisible(m, 300); // até 300 linhas visíveis
 
-    let url =
-      `${GS_BASE}/${WORKSPACE}/ows?service=WFS&version=1.0.0&request=GetFeature` +
-      `&typeName=${encodeURIComponent(m.layerName)}` +
-      `&outputFormat=application/json` +
-      `&maxFeatures=300` +
-      `&bbox=${encodeURIComponent(bbox4326())}` +
-      `&propertyName=${encodeURIComponent(prop)}`;
-
-    const cql = m.ref?.wmsParams?.CQL_FILTER;
-    if (cql) url += `&CQL_FILTER=${encodeURIComponent(cql)}`;
-
-    const gj = await fetch(url).then(r => r.json()).catch(() => null);
-    const feats = gj?.features || [];
-
-    feats.forEach(f => {
-      const p = f.properties || {};
+    rows.forEach(p => {
       const row = [
         m.label,
-        p[cols[0]] ?? '',
-        p[cols[1]] ?? '',
-        p[cols[2]] ?? '',
-        p[cols[3]] ?? ''
+        p[fields[0]] ?? '',
+        p[fields[1]] ?? '',
+        p[fields[2]] ?? '',
+        p[fields[3]] ?? ''
       ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
       lines.push(row);
     });
@@ -367,38 +312,20 @@ async function exportCsvVisible() {
   downloadText(`webgis_visivel_${new Date().toISOString().slice(0,10)}.csv`, lines.join('\n'));
 }
 
-async function updateInfoPanel() {
-  if (infoPanel.classList.contains('hidden')) return;
+function updateInfoPanel() {
+  if (!infoBody || infoPanel.classList.contains('hidden')) return;
 
   const z = map.getZoom();
   const c = map.getCenter();
-
   const active = INFO_LAYERS.filter(m => map.hasLayer(m.ref));
 
   const activeChips = active.length
     ? active.map(m => `<span class="info-chip info-ok">${esc(m.label)}</span>`).join(' ')
     : `<span class="info-chip info-bad">nenhuma camada ativa</span>`;
 
-  infoBody.innerHTML = `
-    <div><b>Zoom:</b> ${z}</div>
-    <div><b>Centro:</b> ${c.lat.toFixed(4)}, ${c.lng.toFixed(4)}</div>
-
-    <div class="info-section">
-      <h4>Camadas ativas</h4>
-      ${activeChips}
-    </div>
-
-    <div class="info-section">
-      <h4>Amostra (visível no enquadramento)</h4>
-      <div style="color:#666;font-size:12px">Carregando...</div>
-    </div>
-  `;
-
-  const samples = await Promise.all(active.map(m => fetchSample(m)));
-
   let tables = '';
-  active.forEach((m, i) => {
-    const rows = samples[i];
+  active.forEach(m => {
+    const rows = sampleVisible(m, 5);
     const cols = (SAMPLE_FIELDS[m.key] || []).slice(0, 4);
     const labels = SAMPLE_LABELS[m.key] || {};
 
@@ -413,7 +340,7 @@ async function updateInfoPanel() {
           <tr>${cols.map(cn => `<th style="text-align:left;border-bottom:1px solid #ddd;padding:4px">${esc(labels[cn] || cn)}</th>`).join('')}</tr>
         </thead>
         <tbody>
-          ${rows.slice(0, 5).map(r => `
+          ${rows.map(r => `
             <tr>
               ${cols.map(cn => `<td style="border-bottom:1px solid #f0f0f0;padding:4px">${esc(r[cn] ?? '')}</td>`).join('')}
             </tr>
@@ -439,9 +366,37 @@ async function updateInfoPanel() {
     </div>
   `;
 
-  document.getElementById('btnExport').addEventListener('click', exportCsvVisible);
+  document.getElementById('btnExport')?.addEventListener('click', exportCsvVisible);
 }
 
-map.on('zoomend moveend overlayadd overlayremove', () => {
-  updateInfoPanel();
-});
+map.on('zoomend moveend overlayadd overlayremove', updateInfoPanel);
+
+// ===============================
+// CARREGAR GEOJSON E INICIAR
+// ===============================
+async function loadGeoJSON(url) {
+  const r = await fetch(url, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`Falha ao carregar ${url}`);
+  return r.json();
+}
+
+(async function boot() {
+  try {
+    [gjMunicipios, gjEstratos, gjFavelas, gjMcmv] = await Promise.all([
+      loadGeoJSON(DATA.municipios),
+      loadGeoJSON(DATA.estratos),
+      loadGeoJSON(DATA.favelas),
+      loadGeoJSON(DATA.mcmv)
+    ]);
+
+    // aplica no mapa respeitando filtros iniciais (vazio)
+    await applyFilters();
+
+    enforceZoomRules();
+    refreshLegend();
+    updateInfoPanel();
+  } catch (e) {
+    console.error(e);
+    alert('Erro carregando GeoJSON local. Confira a pasta /data e os nomes dos arquivos.');
+  }
+})();
