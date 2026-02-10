@@ -24,10 +24,10 @@ L.control.scale().addTo(map);
 // (não muda "tabelas"/nomes do seu padrão, só o caminho)
 // ===============================
 const DATA = {
-  municipios: 'data/municipios.geojson',
-  estratos:   'data/estratos.geojson',
-  favelas:    'data/favelas.geojson',
-  mcmv:       'data/mcmv.geojson'
+  municipios: 'data/municipios.json',
+  estratos:   'data/estratos.json',
+  favelas:    'data/favelas.json',
+  mcmv:       'data/mcmv.json'
 };
 
 // ===============================
@@ -375,9 +375,9 @@ map.on('zoomend moveend overlayadd overlayremove', updateInfoPanel);
 // CARREGAR GEOJSON E INICIAR
 // ===============================
 async function loadGeoJSON(url) {
-  const r = await fetch(url, { cache: 'no-store' });
-  if (!r.ok) throw new Error(`Falha ao carregar ${url}`);
-  return r.json();
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Erro ao carregar ${url}`);
+  return await res.json();
 }
 
 (async function boot() {
@@ -400,3 +400,4 @@ async function loadGeoJSON(url) {
     alert('Erro carregando GeoJSON local. Confira a pasta /data e os nomes dos arquivos.');
   }
 })();
+
