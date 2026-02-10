@@ -33,13 +33,13 @@ html, body {
   z-index: 1000;
   background: #ffffff;
   padding: 12px 14px;
-  border-radius: 6px;
+  border-radius: 10px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.25);
-  width: 220px;
+  width: 240px;
 }
 
 .filters-title {
-  font-weight: 700;
+  font-weight: 800;
   margin-bottom: 8px;
   font-size: 14px;
 }
@@ -48,20 +48,35 @@ html, body {
   display: block;
   margin-top: 8px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .filters select,
 .filters button {
   width: 100%;
-  margin-top: 4px;
-  padding: 6px;
+  margin-top: 6px;
+  padding: 8px 10px;
   font-size: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,.12);
+  background: #fff;
+}
+
+.filters select:focus,
+.filters button:focus {
+  outline: 2px solid rgba(44,123,229,.25);
+  outline-offset: 1px;
 }
 
 .filters button {
   margin-top: 10px;
   cursor: pointer;
+  font-weight: 700;
+  background: #f6f7f9;
+}
+
+.filters button:hover {
+  background: #eceff4;
 }
 
 /* ===============================
@@ -69,17 +84,18 @@ html, body {
 =============================== */
 .btn-info {
   position: absolute;
-  top: 160px;
+  top: 14px;
   right: 14px;
   z-index: 1000;
-  padding: 6px 10px;
+  padding: 8px 12px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 800;
   background: #2c7be5;
   color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 10px;
   cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.22);
 }
 
 .btn-info:hover {
@@ -91,16 +107,18 @@ html, body {
 =============================== */
 .info-panel {
   position: absolute;
-  top: 170px;
-  right: 120px;
+  top: 60px;              /* alinhado ao topo, abaixo do botão */
+  right: 14px;
   z-index: 1000;
-  width: 320px;
-  max-height: 70vh;
+  width: 360px;
+  max-height: calc(100vh - 90px);
   background: #ffffff;
-  border-radius: 6px;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,.08);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.28);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .info-panel.hidden {
@@ -111,28 +129,105 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 10px;
-  background: #f2f2f2;
-  border-bottom: 1px solid #ddd;
+  padding: 10px 12px;
+  background: #f7f7f8;
+  border-bottom: 1px solid rgba(0,0,0,.08);
 }
 
 .info-title {
-  font-weight: 700;
+  font-weight: 900;
   font-size: 13px;
 }
 
 .info-close {
   border: none;
   background: transparent;
-  font-size: 16px;
+  font-size: 18px;
   cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 10px;
+}
+
+.info-close:hover {
+  background: rgba(0,0,0,.06);
 }
 
 .info-body {
-  padding: 10px;
+  padding: 12px;
   overflow-y: auto;
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.45;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ===== INFO PANEL (layout melhorado) ===== */
+.info-section {
+  padding: 10px;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 12px;
+  background: #fbfbfb;
+}
+
+.info-section h4 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #444;
+}
+
+.info-chip {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #1f2d5a;
+  margin: 4px 6px 0 0;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.info-chip.info-ok { background:#eaffea; color:#0b3d16; }
+.info-chip.info-bad{ background:#ffecec; color:#5a1515; }
+
+.info-mini {
+  padding: 10px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.08);
+  margin-top: 8px;
+}
+
+/* tabelas do painel */
+.info-mini table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.info-mini th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+}
+
+/* botão export dentro do painel */
+#btnExport {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(0,0,0,.12);
+  border-radius: 10px;
+  background: #2c7be5;
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+#btnExport:hover {
+  background: #1a68d1;
 }
 
 /* ===============================
@@ -142,16 +237,16 @@ html, body {
   position: absolute;
   bottom: 14px;
   right: 14px;
-  z-index: 1000;
+  z-index: 999; /* abaixo do painel info */
   background: #ffffff;
   padding: 10px;
-  border-radius: 6px;
+  border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.25);
   max-width: 260px;
 }
 
 .legend-title {
-  font-weight: 700;
+  font-weight: 900;
   margin-bottom: 6px;
   font-size: 13px;
 }
@@ -170,6 +265,12 @@ html, body {
 =============================== */
 .leaflet-control-layers {
   font-size: 12px;
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+.leaflet-control-layers-expanded {
+  padding: 10px !important;
 }
 
 .leaflet-popup-content {
@@ -177,63 +278,22 @@ html, body {
   line-height: 1.4;
 }
 
-/* ===== INFO PANEL (layout melhorado) ===== */
+/* ===============================
+   RESPONSIVO (celular / tela pequena)
+=============================== */
+@media (max-width: 680px) {
+  .filters {
+    width: 210px;
+  }
 
-.info-panel{
-  border: 1px solid rgba(0,0,0,.08);
+  .info-panel {
+    width: calc(100% - 28px);
+    right: 14px;
+    left: 14px;
+    top: auto;
+    bottom: 14px;
+    max-height: 55vh;
+  }
 }
 
-.info-body{
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
 
-.info-section{
-  padding: 10px;
-  border: 1px solid rgba(0,0,0,.08);
-  border-radius: 10px;
-  background: #fbfbfb;
-}
-
-.info-section h4{
-  margin: 0 0 8px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  color: #444;
-}
-
-.info-chip{
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: #eef2ff;
-  color: #1f2d5a;
-  margin: 4px 6px 0 0;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.info-chip.info-ok{ background:#eaffea; color:#0b3d16; }
-.info-chip.info-bad{ background:#ffecec; color:#5a1515; }
-
-.info-mini{
-  padding: 10px;
-  border-radius: 10px;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,.08);
-  margin-top: 8px;
-}
-
-/* tabelas do painel */
-.info-mini table{
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.info-mini th{
-  position: sticky;
-  top: 0;
-  background: #fff;
-}
