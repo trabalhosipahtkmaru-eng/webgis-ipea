@@ -14,7 +14,7 @@ const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 const esri = L.tileLayer(
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  { attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community' }
+  { attribution: 'Tiles &copy; Esri' }
 );
 
 L.control.scale().addTo(map);
@@ -47,7 +47,7 @@ const SAMPLE_LABELS = {
 };
 
 // ===============================
-// FILTROS (mesma regra que você tinha)
+// FILTROS (mesma regra)
 // ===============================
 const REGIOES_UF = {
   'Norte': ['AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO'],
@@ -87,24 +87,23 @@ function updateUfOptionsByRegion() {
 
 // ===============================
 // CAMADAS (GeoJSON em memória)
-// Mantém os nomes: municipios/estratos/favelas/mcmv
 // ===============================
 let gjMunicipios = null, gjEstratos = null, gjFavelas = null, gjMcmv = null;
 
-// ✅ opacity NÃO é opção de GeoJSON. Se quiser “aparência”, use style().
-const municipios = L.geoJSON(null, {
-  style: { weight: 1 }
-}).addTo(map);
+// Estilos bem visíveis
+const STYLE = {
+  municipios: { weight: 1.2, opacity: 1, fillOpacity: 0.0 },
+  estratos:   { weight: 1.0, opacity: 1, fillOpacity: 0.15 },
+  favelas:    { weight: 1.0, opacity: 1, fillOpacity: 0.25 }
+};
 
-const estratos = L.geoJSON(null, {
-  style: { weight: 1 }
+// Camadas Leaflet
+const municipios = L.geoJSON(null, { style: () => STYLE.municipios }).addTo(map);
+const estratos   = L.geoJSON(null, { style: () => STYLE.estratos });
+const favelas    = L.geoJSON(null, { style: () => STYLE.favelas });
+const mcmv       = L.geoJSON(null, {
+  pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius: 4, weight: 1, opacity: 1, fillOpacity: 0.8 })
 });
-
-const favelas = L.geoJSON(null, {
-  style: { weight: 1 }
-});
-
-const mcmv = L.geoJSON(null);
 
 // ===============================
 // CONTROLE DE CAMADAS
@@ -136,7 +135,7 @@ function enforceZoomRules() {
 map.on('zoomend', enforceZoomRules);
 
 // ===============================
-// LEGENDA (sem WMS agora)
+// LEGENDA (simples)
 // ===============================
 const legendItemsEl = document.getElementById('legend-items');
 const legendConfig = [
@@ -160,23 +159,21 @@ function refreshLegend() {
 map.on('overlayadd overlayremove', refreshLegend);
 
 // ===============================
-// FILTRO LOCAL (sem CQL)
+// FILTRO LOCAL
 // ===============================
 function passesFilters(props, key) {
-  const reg   = regSelect.value;
-  const uf    = ufSelect.value;
+  const reg  = regSelect.value;
+  const uf   = ufSelect.value;
   const regic = regicSelect?.value || '';
 
   const p = props || {};
   const fUF    = norm(p.sigla_uf).toUpperCase();
   const fRegic = norm(p.hierarquia);
 
-  // REGIC só onde existe o campo
   if (regic) {
     if (p.hierarquia != null && fRegic !== norm(regic)) return false;
   }
 
-  // UF tem prioridade
   if (uf) {
     if (fUF !== uf.toUpperCase()) return false;
   } else if (reg) {
@@ -187,13 +184,31 @@ function passesFilters(props, key) {
   return true;
 }
 
+// Converte qualquer GeoJSON em FeatureCollection
+function toFeatureCollection(gj) {
+  if (!gj) return { type: 'FeatureCollection', features: [] };
+
+  if (gj.type === 'FeatureCollection') return gj;
+  if (gj.type === 'Feature') return { type: 'FeatureCollection', features: [gj] };
+
+  // Geometry (Polygon, MultiPolygon, etc)
+  if (gj.type && typeof gj.type === 'string') {
+    return {
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', properties: {}, geometry: gj }]
+    };
+  }
+
+  return { type: 'FeatureCollection', features: [] };
+}
+
 function applyToLayer(layer, geojson, key) {
-  if (!geojson?.features) return;
+  const fc = toFeatureCollection(geojson);
   layer.clearLayers();
 
   const filtered = {
     type: 'FeatureCollection',
-    features: geojson.features.filter(f => passesFilters(f.properties, key))
+    features: (fc.features || []).filter(f => passesFilters(f.properties, key))
   };
 
   layer.addData(filtered);
@@ -206,10 +221,10 @@ function applyFilters() {
   applyToLayer(mcmv,       gjMcmv,       'mcmv');
 
   refreshLegend();
-  updateInfoPanel();
+  updateInfoPanel?.();
 }
 
-// eventos de filtro
+// Eventos filtros
 regSelect.addEventListener('change', () => {
   updateUfOptionsByRegion();
   applyFilters();
@@ -228,7 +243,7 @@ btnClear.addEventListener('click', () => {
 updateUfOptionsByRegion();
 
 // ===============================
-// PAINEL INFO
+// INFO PANEL (mantém o seu existente)
 // ===============================
 const btnInfo = document.getElementById('btnInfo');
 const btnInfoClose = document.getElementById('btnInfoClose');
@@ -239,7 +254,10 @@ btnInfo?.addEventListener('click', () => {
   infoPanel.classList.toggle('hidden');
   if (!infoPanel.classList.contains('hidden')) updateInfoPanel();
 });
-btnInfoClose?.addEventListener('click', () => infoPanel.classList.add('hidden'));
+
+btnInfoClose?.addEventListener('click', () => {
+  infoPanel.classList.add('hidden');
+});
 
 function esc(v) {
   return String(v ?? '').replace(/[&<>"']/g, s => ({
@@ -254,10 +272,10 @@ const INFO_LAYERS = [
   { key:'mcmv',       label:'MCMV',       ref: mcmv,       gj: () => gjMcmv }
 ];
 
-// ✅ mais seguro e leve: cria bounds sem “manter layer”
 function featureBounds(feature) {
   try {
-    return L.geoJSON(feature).getBounds();
+    const tmp = L.geoJSON(feature);
+    return tmp.getBounds();
   } catch {
     return null;
   }
@@ -265,19 +283,15 @@ function featureBounds(feature) {
 
 function sampleVisible(meta, max = 5) {
   if (!map.hasLayer(meta.ref)) return [];
-  const gj = meta.gj();
-  if (!gj?.features?.length) return [];
-
+  const gj = toFeatureCollection(meta.gj());
   const fields = (SAMPLE_FIELDS[meta.key] || []).slice(0, 4);
   const b = map.getBounds();
 
   const out = [];
-  for (const f of gj.features) {
+  for (const f of gj.features || []) {
     if (!passesFilters(f.properties, meta.key)) continue;
-
     const fb = featureBounds(f);
-    if (!fb) continue;
-    if (!b.intersects(fb)) continue;
+    if (!fb || !b.intersects(fb)) continue;
 
     const row = {};
     for (const k of fields) row[k] = f.properties?.[k] ?? '';
@@ -285,41 +299,6 @@ function sampleVisible(meta, max = 5) {
     if (out.length >= max) break;
   }
   return out;
-}
-
-function downloadText(filename, text) {
-  const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-function exportCsvVisible() {
-  const active = INFO_LAYERS.filter(m => map.hasLayer(m.ref));
-  if (!active.length) return;
-
-  const lines = ['layer,c1,c2,c3,c4'];
-
-  for (const m of active) {
-    const fields = (SAMPLE_FIELDS[m.key] || []).slice(0, 4);
-    const rows = sampleVisible(m, 300);
-
-    rows.forEach(p => {
-      const row = [
-        m.label,
-        p[fields[0]] ?? '',
-        p[fields[1]] ?? '',
-        p[fields[2]] ?? '',
-        p[fields[3]] ?? ''
-      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
-      lines.push(row);
-    });
-  }
-
-  downloadText(`webgis_visivel_${new Date().toISOString().slice(0,10)}.csv`, lines.join('\n'));
 }
 
 function updateInfoPanel() {
@@ -372,11 +351,8 @@ function updateInfoPanel() {
     <div class="info-section">
       <h4>Amostra (visível no enquadramento)</h4>
       ${tables}
-      <button id="btnExport" style="width:100%;margin-top:8px;padding:8px;cursor:pointer">Exportar CSV (visível)</button>
     </div>
   `;
-
-  document.getElementById('btnExport')?.addEventListener('click', exportCsvVisible);
 }
 
 map.on('zoomend moveend overlayadd overlayremove', updateInfoPanel);
@@ -386,7 +362,7 @@ map.on('zoomend moveend overlayadd overlayremove', updateInfoPanel);
 // ===============================
 async function loadGeoJSON(url) {
   const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`Erro ao carregar ${url} (HTTP ${res.status})`);
+  if (!res.ok) throw new Error(`Erro ao carregar ${url} (${res.status})`);
   return await res.json();
 }
 
@@ -399,16 +375,25 @@ async function loadGeoJSON(url) {
       loadGeoJSON(DATA.mcmv)
     ]);
 
-    // aplica no mapa
     applyFilters();
-
     enforceZoomRules();
     refreshLegend();
     updateInfoPanel();
+
+    // ✅ PROVA visual + corrige caso as geometrias estejam “perdidas”
+    const b = municipios.getBounds();
+    if (b && b.isValid()) {
+      map.fitBounds(b, { padding: [10, 10] });
+    } else {
+      console.warn('Bounds inválido: possível GeoJSON em CRS errado (ex: UTM).');
+      alert('As camadas carregaram, mas o Bounds é inválido. Provável CRS errado (GeoJSON precisa estar em EPSG:4326).');
+    }
+
   } catch (e) {
     console.error(e);
     alert('Erro carregando GeoJSON local. Confira a pasta /data e os nomes dos arquivos.');
   }
 })();
+
 
 
