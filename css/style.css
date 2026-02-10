@@ -1,0 +1,239 @@
+/* ===============================
+   RESET BÁSICO
+=============================== */
+* {
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* ===============================
+   MAPA
+=============================== */
+#map {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* ===============================
+   PAINEL DE FILTROS
+=============================== */
+.filters {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 1000;
+  background: #ffffff;
+  padding: 12px 14px;
+  border-radius: 6px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  width: 220px;
+}
+
+.filters-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.filters label {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.filters select,
+.filters button {
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px;
+  font-size: 12px;
+}
+
+.filters button {
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+/* ===============================
+   BOTÃO INFO
+=============================== */
+.btn-info {
+  position: absolute;
+  top: 160px;
+  right: 14px;
+  z-index: 1000;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #2c7be5;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-info:hover {
+  background: #1a68d1;
+}
+
+/* ===============================
+   PAINEL INFO (LATERAL)
+=============================== */
+.info-panel {
+  position: absolute;
+  top: 170px;
+  right: 120px;
+  z-index: 1000;
+  width: 320px;
+  max-height: 70vh;
+  background: #ffffff;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  display: flex;
+  flex-direction: column;
+}
+
+.info-panel.hidden {
+  display: none;
+}
+
+.info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: #f2f2f2;
+  border-bottom: 1px solid #ddd;
+}
+
+.info-title {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.info-close {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.info-body {
+  padding: 10px;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* ===============================
+   LEGENDA
+=============================== */
+.legend {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  z-index: 1000;
+  background: #ffffff;
+  padding: 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  max-width: 260px;
+}
+
+.legend-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.legend-item {
+  margin-bottom: 8px;
+}
+
+.legend-item img {
+  max-width: 100%;
+  display: block;
+}
+
+/* ===============================
+   LEAFLET (AJUSTES FINOS)
+=============================== */
+.leaflet-control-layers {
+  font-size: 12px;
+}
+
+.leaflet-popup-content {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* ===== INFO PANEL (layout melhorado) ===== */
+
+.info-panel{
+  border: 1px solid rgba(0,0,0,.08);
+}
+
+.info-body{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.info-section{
+  padding: 10px;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 10px;
+  background: #fbfbfb;
+}
+
+.info-section h4{
+  margin: 0 0 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #444;
+}
+
+.info-chip{
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #1f2d5a;
+  margin: 4px 6px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.info-chip.info-ok{ background:#eaffea; color:#0b3d16; }
+.info-chip.info-bad{ background:#ffecec; color:#5a1515; }
+
+.info-mini{
+  padding: 10px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.08);
+  margin-top: 8px;
+}
+
+/* tabelas do painel */
+.info-mini table{
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.info-mini th{
+  position: sticky;
+  top: 0;
+  background: #fff;
+}
