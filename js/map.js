@@ -21,7 +21,6 @@ L.control.scale().addTo(map);
 
 // ===============================
 // DADOS LOCAIS (GEOJSON) - GitHub Pages
-// (não muda "tabelas"/nomes do seu padrão, só o caminho)
 // ===============================
 const DATA = {
   municipios: 'data/municipios.json',
@@ -66,7 +65,7 @@ const btnClear = document.getElementById('btnClear');
 function norm(s) {
   return (s ?? '')
     .toString()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // tira acento
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -92,13 +91,23 @@ function updateUfOptionsByRegion() {
 // ===============================
 let gjMunicipios = null, gjEstratos = null, gjFavelas = null, gjMcmv = null;
 
-const municipios = L.geoJSON(null, { opacity: 0.90 }).addTo(map);
-const estratos   = L.geoJSON(null, { opacity: 0.85 });
-const favelas    = L.geoJSON(null, { opacity: 0.90 });
-const mcmv       = L.geoJSON(null, { opacity: 1.00 });
+// ✅ opacity NÃO é opção de GeoJSON. Se quiser “aparência”, use style().
+const municipios = L.geoJSON(null, {
+  style: { weight: 1 }
+}).addTo(map);
+
+const estratos = L.geoJSON(null, {
+  style: { weight: 1 }
+});
+
+const favelas = L.geoJSON(null, {
+  style: { weight: 1 }
+});
+
+const mcmv = L.geoJSON(null);
 
 // ===============================
-// CONTROLE DE CAMADAS (igual ao seu)
+// CONTROLE DE CAMADAS
 // ===============================
 L.control.layers(
   { 'OpenStreetMap': osm, 'Satélite (ESRI)': esri },
@@ -128,7 +137,6 @@ map.on('zoomend', enforceZoomRules);
 
 // ===============================
 // LEGENDA (sem WMS agora)
-// (mostra só as camadas ativas, simples e leve)
 // ===============================
 const legendItemsEl = document.getElementById('legend-items');
 const legendConfig = [
@@ -155,18 +163,16 @@ map.on('overlayadd overlayremove', refreshLegend);
 // FILTRO LOCAL (sem CQL)
 // ===============================
 function passesFilters(props, key) {
-  const reg  = regSelect.value;
-  const uf   = ufSelect.value;
+  const reg   = regSelect.value;
+  const uf    = ufSelect.value;
   const regic = regicSelect?.value || '';
 
   const p = props || {};
   const fUF    = norm(p.sigla_uf).toUpperCase();
-  const fReg   = norm(p.regiao);
   const fRegic = norm(p.hierarquia);
 
-  // REGIC: aplica com segurança só onde existe o campo
+  // REGIC só onde existe o campo
   if (regic) {
-    // municípios sempre tem; nas outras camadas pode não ter
     if (p.hierarquia != null && fRegic !== norm(regic)) return false;
   }
 
@@ -182,18 +188,18 @@ function passesFilters(props, key) {
 }
 
 function applyToLayer(layer, geojson, key) {
-  if (!geojson) return;
+  if (!geojson?.features) return;
   layer.clearLayers();
 
   const filtered = {
     type: 'FeatureCollection',
-    features: (geojson.features || []).filter(f => passesFilters(f.properties, key))
+    features: geojson.features.filter(f => passesFilters(f.properties, key))
   };
 
   layer.addData(filtered);
 }
 
-async function applyFilters() {
+function applyFilters() {
   applyToLayer(municipios, gjMunicipios, 'municipios');
   applyToLayer(estratos,   gjEstratos,   'estratos');
   applyToLayer(favelas,    gjFavelas,    'favelas');
@@ -203,6 +209,7 @@ async function applyFilters() {
   updateInfoPanel();
 }
 
+// eventos de filtro
 regSelect.addEventListener('change', () => {
   updateUfOptionsByRegion();
   applyFilters();
@@ -221,7 +228,7 @@ btnClear.addEventListener('click', () => {
 updateUfOptionsByRegion();
 
 // ===============================
-// PAINEL INFO (Zoom + Camadas ativas + Tabela leve + Export CSV)
+// PAINEL INFO
 // ===============================
 const btnInfo = document.getElementById('btnInfo');
 const btnInfoClose = document.getElementById('btnInfoClose');
@@ -232,10 +239,7 @@ btnInfo?.addEventListener('click', () => {
   infoPanel.classList.toggle('hidden');
   if (!infoPanel.classList.contains('hidden')) updateInfoPanel();
 });
-
-btnInfoClose?.addEventListener('click', () => {
-  infoPanel.classList.add('hidden');
-});
+btnInfoClose?.addEventListener('click', () => infoPanel.classList.add('hidden'));
 
 function esc(v) {
   return String(v ?? '').replace(/[&<>"']/g, s => ({
@@ -250,9 +254,13 @@ const INFO_LAYERS = [
   { key:'mcmv',       label:'MCMV',       ref: mcmv,       gj: () => gjMcmv }
 ];
 
+// ✅ mais seguro e leve: cria bounds sem “manter layer”
 function featureBounds(feature) {
-  const tmp = L.geoJSON(feature);
-  return tmp.getBounds();
+  try {
+    return L.geoJSON(feature).getBounds();
+  } catch {
+    return null;
+  }
 }
 
 function sampleVisible(meta, max = 5) {
@@ -265,8 +273,10 @@ function sampleVisible(meta, max = 5) {
 
   const out = [];
   for (const f of gj.features) {
-    if (!passesFilters(f.properties, meta.key)) continue; // respeita filtros
+    if (!passesFilters(f.properties, meta.key)) continue;
+
     const fb = featureBounds(f);
+    if (!fb) continue;
     if (!b.intersects(fb)) continue;
 
     const row = {};
@@ -295,7 +305,7 @@ function exportCsvVisible() {
 
   for (const m of active) {
     const fields = (SAMPLE_FIELDS[m.key] || []).slice(0, 4);
-    const rows = sampleVisible(m, 300); // até 300 linhas visíveis
+    const rows = sampleVisible(m, 300);
 
     rows.forEach(p => {
       const row = [
@@ -375,8 +385,8 @@ map.on('zoomend moveend overlayadd overlayremove', updateInfoPanel);
 // CARREGAR GEOJSON E INICIAR
 // ===============================
 async function loadGeoJSON(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Erro ao carregar ${url}`);
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Erro ao carregar ${url} (HTTP ${res.status})`);
   return await res.json();
 }
 
@@ -389,8 +399,8 @@ async function loadGeoJSON(url) {
       loadGeoJSON(DATA.mcmv)
     ]);
 
-    // aplica no mapa respeitando filtros iniciais (vazio)
-    await applyFilters();
+    // aplica no mapa
+    applyFilters();
 
     enforceZoomRules();
     refreshLegend();
@@ -400,4 +410,5 @@ async function loadGeoJSON(url) {
     alert('Erro carregando GeoJSON local. Confira a pasta /data e os nomes dos arquivos.');
   }
 })();
+
 
