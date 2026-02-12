@@ -12,31 +12,32 @@
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
 
   <!-- Seu CSS -->
-  <link rel="stylesheet" href="css/style.css?v=20260209" />
+  <link rel="stylesheet" href="css/style.css?v=20260212" />
 </head>
 
 <body>
-
   <!-- MAPA -->
-  <div id="map"></div>
+  <div id="map" role="application" aria-label="Mapa interativo"></div>
 
   <!-- Botão + Painel lateral de INFO -->
-  <button id="btnInfo" class="btn-info" type="button">Info</button>
+  <button id="btnInfo" class="btn-info" type="button" aria-controls="infoPanel" aria-expanded="false">
+    Info
+  </button>
 
   <div id="infoPanel" class="info-panel hidden" aria-hidden="true">
     <div class="info-header">
       <div class="info-title">Informações do Mapa</div>
-      <button id="btnInfoClose" class="info-close" type="button" aria-label="Fechar">✕</button>
+      <button id="btnInfoClose" class="info-close" type="button" aria-label="Fechar painel de informações">✕</button>
     </div>
     <div id="infoBody" class="info-body"></div>
   </div>
 
   <!-- Painel de filtros -->
-  <div id="filters" class="filters">
+  <div id="filters" class="filters" role="region" aria-label="Filtros do mapa">
     <div class="filters-title">Filtros</div>
 
     <label for="regSelect">Região</label>
-    <select id="regSelect">
+    <select id="regSelect" aria-label="Selecionar região">
       <option value="">(todas)</option>
       <option value="Norte">Norte</option>
       <option value="Nordeste">Nordeste</option>
@@ -46,7 +47,7 @@
     </select>
 
     <label for="ufSelect">UF</label>
-    <select id="ufSelect">
+    <select id="ufSelect" aria-label="Selecionar UF">
       <option value="">(todas)</option>
       <option value="AC">AC</option><option value="AL">AL</option><option value="AM">AM</option><option value="AP">AP</option>
       <option value="BA">BA</option><option value="CE">CE</option><option value="DF">DF</option><option value="ES">ES</option>
@@ -58,7 +59,7 @@
     </select>
 
     <label for="regicSelect">REGIC 2018</label>
-    <select id="regicSelect">
+    <select id="regicSelect" aria-label="Selecionar hierarquia REGIC 2018">
       <option value="">(todas)</option>
       <option value="Centro Local">Centro Local</option>
       <option value="Centro Sub-Regional A">Centro Sub-Regional A</option>
@@ -73,11 +74,11 @@
       <option value="Grande Metrópole Nacional">Grande Metrópole Nacional</option>
     </select>
 
-    <button id="btnClear" type="button">Limpar filtro</button>
+    <button id="btnClear" type="button" aria-label="Limpar filtros">Limpar filtro</button>
   </div>
 
   <!-- Legenda -->
-  <div id="legend" class="legend">
+  <div id="legend" class="legend" role="region" aria-label="Legenda do mapa">
     <div class="legend-title">Legenda</div>
     <div id="legend-items"></div>
   </div>
@@ -85,12 +86,38 @@
   <!-- JS (ordem correta) -->
   <script src="vendor/leaflet/leaflet.js"></script>
 
-  <!-- TopoJSON LOCAL (necessário pro estratos.json que é Topology) -->
+  <!-- TopoJSON (apenas se você realmente estiver usando TopoJSON em algum arquivo) -->
   <script src="vendor/topojson/topojson-client.min.js"></script>
 
-  <!-- Seu map.js (apenas 1 vez!) -->
-  <script src="js/map.js?v=20260209" defer></script>
+  <!-- Seu map.js (sem defer, porque depende de Leaflet já carregado acima) -->
+  <script src="js/map.js?v=20260212"></script>
 
+  <!-- Acessibilidade: sincroniza aria do botão Info com o painel -->
+  <script>
+    (function syncInfoAria() {
+      const btn = document.getElementById('btnInfo');
+      const panel = document.getElementById('infoPanel');
+      const close = document.getElementById('btnInfoClose');
+
+      function setState(open) {
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+      }
+
+      // Estado inicial
+      setState(!panel.classList.contains('hidden'));
+
+      btn?.addEventListener('click', () => {
+        const open = !panel.classList.contains('hidden');
+        setState(open);
+      });
+
+      close?.addEventListener('click', () => {
+        setState(false);
+      });
+    })();
+  </script>
 </body>
 </html>
+
 
