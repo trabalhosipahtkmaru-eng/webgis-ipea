@@ -101,7 +101,7 @@ html, body {
 =============================== */
 .btn-info {
   position: absolute;
-  top: 14px;
+  top: 140px;
   right: 14px;
   z-index: 1000;
   padding: 9px 12px;
@@ -124,8 +124,8 @@ html, body {
 =============================== */
 .info-panel {
   position: absolute;
-  top: 60px;
-  right: 14px;
+  top: 160px;
+  right: 20px;
   z-index: 1000;
   width: 360px;
   max-height: calc(100vh - 90px);
@@ -350,3 +350,4 @@ html, body {
     max-width: 220px;
   }
 }
+
